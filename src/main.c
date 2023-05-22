@@ -130,15 +130,14 @@ static void *recv_thread(void *arg)
             {
                 if (!strcmp(str, ip[i]))
                 {
-        
+
                     send_myself_flag = 1;
                     continue;
                 }
             }
-            
+
             if (send_myself_flag)
                 continue;
-
 
             unsigned int ip = ntohl(remote_addr.sin_addr.s_addr);
             unsigned int d1 = (ip >> 24) & 0xFF;
@@ -188,7 +187,6 @@ static void *send_thread(void *arg)
     // Set broadcast address
     memset(&broadcast_addr, 0, sizeof(broadcast_addr));
     broadcast_addr.sin_family = AF_INET;
-    broadcast_addr.sin_addr.s_addr = inet_addr("192.168.137.255"); // Broadcast address for local network
     broadcast_addr.sin_port = htons(*(uint16_t *)arg);
 
     for (;;)
@@ -272,6 +270,8 @@ static void *send_thread(void *arg)
 int main()
 {
     char source[1000];
+    pthread_t thread_id;
+    int ret;
     FILE *fp = fopen("config.json", "r");
 
     if (fp != NULL)
@@ -284,12 +284,15 @@ int main()
         printf("open fail");
     }
 
+    // Parse JSON
     cJSON *config = cJSON_Parse(source);
+
+    // Get id and listen port
     cJSON *id_c = cJSON_GetObjectItem(config, "id");
     int id = id_c->valueint;
     uint16_t listen_port = cJSON_GetObjectItem(config, "rec_port")->valueint;
-    pthread_t thread_id;
-    int ret;
+
+    
     ret = pthread_create(&thread_id, NULL, recv_thread, (void *)&listen_port);
     if (ret)
     {
