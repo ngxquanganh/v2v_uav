@@ -1,4 +1,5 @@
 main
 obj
 main_test
-test/obj
+.vscode
+

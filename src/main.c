@@ -11,12 +11,21 @@
 #include <netdb.h>
 #include <ifaddrs.h>
 
+#include "../include/frameMess.h"
 #include "../include/cJSON.h"
 
 #define BUF_SIZE 1024
 #define TIME_RECV 3
 
+Message_data_t *message_data;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void handle_message(Message_data_t *message)
+{
+    pthread_mutex_lock(&mutex);
+    message_data = message;
+    pthread_mutex_unlock(&mutex);
+}
 
 static void *recv_thread(void *arg)
 {
@@ -272,6 +281,8 @@ int main()
     char source[1000];
     pthread_t thread_id;
     int ret;
+
+    message_data = (Message_data_t *)malloc(sizeof(Message_data_t));
     FILE *fp = fopen("config.json", "r");
 
     if (fp != NULL)
@@ -289,10 +300,9 @@ int main()
 
     // Get id and listen port
     cJSON *id_c = cJSON_GetObjectItem(config, "id");
-    int id = id_c->valueint;
+    // strcpy(message_data->id_uav, id_c->valuestring);
     uint16_t listen_port = cJSON_GetObjectItem(config, "rec_port")->valueint;
 
-    
     ret = pthread_create(&thread_id, NULL, recv_thread, (void *)&listen_port);
     if (ret)
     {

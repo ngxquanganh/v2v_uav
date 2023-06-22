@@ -1,46 +1,86 @@
-#pragma once
-
-typedef struct node
+#ifdef __cplusplus
+extern "C"
 {
-    char id[6];
+#endif
+#pragma once
+#include "frameMess.h"
+    extern volatile unsigned int num_uav;
 
-    char lat[10];
+    typedef enum node_status
+    {
+        NODE_OK,
+        NODE_ERROR
+    } node_status_e;
 
-    char log[10];
+    typedef struct node
+    {
+        char id[ID_SIZE];
 
-    struct node *next;
+        char buffer[PAYLOAD_MAX_SIZE];
 
-} node_s;
+        unsigned int seq_nb;
 
-/**
- * @brief Insert a node at the end of the list
- * @param head The head of the list
- * @param id The id of the node
- * @param lat The latitude of the node
- * @param log The longitude of the node
- * @return void
- */
-void insertNode(node_s **head, char id[], char lat[], char log[]);
+        struct node *next;
 
-/**
- * @brief Print the list
- * @param head The head of the list
- * @return void
- */
-void initList(node_s **head);
+    } node_s;
 
-/**
- * @brief Delete a node from the list
- * @param head The head of the list
- * @param id The id of the node
- * @return void
- */
-void deleteNode(node_s **head, char id[]);
+    /**
+     * @brief Insert a node at the end of the list
+     * @param head The head of the list
+     * @param id The id of the node
+     * @param seq_nb The sequence number of the node
+     * @param buffer The buffer of the node
+     * @return node_status_e The status of the insertion
+     */
+    node_status_e insertNode2(node_s **head, char *id, char *buffer, unsigned int seq_nb);
 
-/**
- * @brief Print the list
- * @param head The head of the list
- * @return void
- * @note This function is used for debugging
- */
-void printList(node_s *head);
+    /**
+     * @brief Print the list
+     * @param head The head of the list
+     * @return void
+     */
+    void initList(node_s **head);
+
+    /**
+     * @brief Delete a node from the list
+     * @param head The head of the list
+     * @param id The id of the node
+     * @return void
+     */
+    void deleteNode(node_s **head, char id[]);
+
+    /**
+     * @brief Print the list
+     * @param head The head of the list
+     * @return void
+     * @note This function is used for debugging
+     */
+    void printList(node_s *head);
+
+    /**
+     * @brief Search a node in the list
+     * @param head The head of the list
+     * @param id The id of the node
+     * @return node_s The node
+     */
+    node_s *searchNode(node_s *head, char id[]);
+
+    /**
+     * @brief Update a node in the list
+     * @param head The head of the list
+     * @param id The id of the node
+     * @param seq_nb The sequence number of the node
+     * @param buffer The buffer of the node
+     * @return void
+     */
+    node_status_e updateNode(node_s *head, char id[], unsigned int seq_nb, char buffer[]);
+
+
+
+    void printNode(node_s *head, node_s *_node);
+
+    node_s *travelList(node_s *head);
+
+#ifdef __cplusplus
+}
+#endif
