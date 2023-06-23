@@ -32,7 +32,7 @@ extern "C"
      * @param buffer The buffer of the node
      * @return node_status_e The status of the insertion
      */
-    node_status_e insertNode2(node_s **head, char *id, char *buffer, unsigned int seq_nb);
+    node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq_nb);
 
     /**
      * @brief Print the list
@@ -76,9 +76,9 @@ extern "C"
     node_status_e updateNode(node_s *head, char id[], unsigned int seq_nb, char buffer[]);
 
 
-
     void printNode(node_s *head, node_s *_node);
-
+    
+    
     node_s *travelList(node_s *head);
 
 #ifdef __cplusplus

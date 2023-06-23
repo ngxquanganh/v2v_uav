@@ -6,7 +6,7 @@
 #include <string.h>
 node_s *nodeIter;
 
-node_status_e insertNode2(node_s **head, char *id, char *buffer, unsigned int seq_nb)
+node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq_nb)
 {
 
     node_s *newNode = (node_s *)calloc(1, sizeof(node_s));
@@ -20,7 +20,7 @@ node_status_e insertNode2(node_s **head, char *id, char *buffer, unsigned int se
     memcpy(newNode->buffer, buffer, PAYLOAD_MAX_SIZE);
     newNode->next = (*head)->next;
     (*head)->next = newNode;
-    num_uav++;
+
     return NODE_OK;
 }
 
@@ -50,7 +50,6 @@ void deleteNode(node_s **head, char id[])
                 previous->next = current->next;
             }
             free(current);
-            num_uav--;
             return;
         }
         previous = current;
@@ -75,10 +74,7 @@ node_s *searchNode(node_s *head, char *id)
     // node_s *return_node = (node_s *)malloc(sizeof(node_s));
     current = head->next;
 
-    if (current == NULL)
-    {
-        PRINT_DEBUG("NULL");
-    }
+   
     while (current != NULL)
     {
         PRINT_DEBUG("Current id [%s] \n", current->id);
@@ -110,7 +106,6 @@ node_status_e updateNode(node_s *head, char *id, unsigned int seq_nb, char *buff
     }
     return NODE_ERROR;
 }
-
 
 node_s *travelList(node_s *head)
 {

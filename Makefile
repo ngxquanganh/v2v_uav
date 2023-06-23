@@ -25,8 +25,8 @@ all: $(EXE)
 $(EXE): $(OBJ)
 	$(CC)  $(OBJ) -o $(EXE) $(CFLAGS)
 
-$(OBJ_DIR)/main.o: $(SRC_DIR)/main1.c $(INC_DIR)/cJSON.h| $(OBJ_DIR)
-	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/main1.c -o $(OBJ_DIR)/main.o
+$(OBJ_DIR)/main.o: $(SRC_DIR)/main.c $(INC_DIR)/cJSON.h| $(OBJ_DIR)
+	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/main.c -o $(OBJ_DIR)/main.o
 
 $(OBJ_DIR)/linkedList.o: $(SRC_DIR)/linkedList.c $(INC_DIR)/linkedList.h| $(OBJ_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/linkedList.c -o $(OBJ_DIR)/linkedList.o

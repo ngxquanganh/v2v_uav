@@ -13,19 +13,14 @@
 
 #include "../include/frameMess.h"
 #include "../include/cJSON.h"
+#include "../include/linkedList.h"
+#include "../include/util.h"
 
 #define BUF_SIZE 1024
-#define TIME_RECV 3
+#define TIME_RECV 10
 
-Message_data_t *message_data;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void handle_message(Message_data_t *message)
-{
-    pthread_mutex_lock(&mutex);
-    message_data = message;
-    pthread_mutex_unlock(&mutex);
-}
+node_s *head = NULL;
 
 static void *recv_thread(void *arg)
 {
@@ -33,7 +28,7 @@ static void *recv_thread(void *arg)
     int sock;
     struct sockaddr_in local_addr, remote_addr;
     socklen_t addr_len = sizeof(remote_addr);
-    char buffer[BUF_SIZE];
+    char buffer_recv[BUFFER_MAX_SIZE];
     time_t timestamp;
 
     struct ifaddrs *ifaddr, *ifa;
@@ -43,6 +38,14 @@ static void *recv_thread(void *arg)
     uint8_t nb_interface;
 
     nb_interface = 0;
+
+    Message_data_t *mess;
+
+    node_s *node;
+
+    mess = (Message_data_t *)calloc(1, sizeof(Message_data_t));
+
+    // TODO: Assert alloc and init
 
     if (getifaddrs(&ifaddr) == -1)
     {
@@ -113,7 +116,7 @@ static void *recv_thread(void *arg)
         while ((time(NULL) - timestamp) < TIME_RECV)
         {
 
-            if (recvfrom(sock, buffer, BUF_SIZE, 0, (struct sockaddr *)&remote_addr, &addr_len) < 0)
+            if (recvfrom(sock, buffer_recv, BUFFER_MAX_SIZE, 0, (struct sockaddr *)&remote_addr, &addr_len) < 0)
             {
 
                 if (errno == EAGAIN)
@@ -154,7 +157,30 @@ static void *recv_thread(void *arg)
             unsigned int d3 = (ip >> 8) & 0xFF;
             unsigned int d4 = ip & 0xFF;
 
-            printf("Received message [%s] from server:%03u.%03u.%03u.%03u \n", buffer, d1, d2, d3, d4);
+            memcpy(mess->buffer, buffer_recv, BUFFER_MAX_SIZE);
+            Message_status_t ret_mess = deserializeMessage(mess);
+
+            if (ret_mess)
+            {
+                printf("error mess\n");
+                // TODO: log error
+            }
+
+            printf(">> Message: uav id [%s] addr [%03u.%03u.%03u.%03u] seq_nb [%d] [%s]\n", mess->id, d1, d2, d3, d4, mess->seq_nb, mess->payload);
+            node = searchNode(head, mess->id);
+
+            if (!node)
+            {
+                PRINT_DEBUG("not found!\n");
+                /* insert */
+                insertNode(&head, mess->id, mess->payload, mess->seq_nb);
+            }
+            else
+            {
+                updateNode(head, mess->id, mess->seq_nb, mess->payload);
+            }
+
+            printList(head);
         }
 
     END_LOOP:
@@ -177,6 +203,10 @@ static void *send_thread(void *arg)
     struct ifaddrs *ifaddr, *ifa;
     int family, s;
     char host[NI_MAXHOST];
+
+    node_s *node;
+
+    Message_data_t *mess = (Message_data_t *)calloc(1, sizeof(Message_data_t));
 
     // Create a UDP socket
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -248,15 +278,21 @@ static void *send_thread(void *arg)
                 broadcast_addr.sin_addr.s_addr = inet_addr(broadcastAddress); // Broadcast address for local network
 
                 // Send the message to all clients on the local network
-                sprintf(message, "Hello, worlddd!"); // The message to send
-                if (sendto(sock, message, strlen(message), 0, (struct sockaddr *)&broadcast_addr, sizeof(broadcast_addr)) < 0)
+                while (node = travelList(head), node)
                 {
-                    perror("sendto failed");
-                    exit(EXIT_FAILURE);
-                }
-                else
-                {
-                    printf("Message sent to all clients on the network %s\n", broadcastAddress);
+                    mess->seq_nb = node->seq_nb;
+                    memcpy(mess->id, node->id, ID_SIZE);
+                    memcpy(mess->payload, node->buffer, PAYLOAD_MAX_SIZE);
+                    serializeMessage(mess);
+                    if (sendto(sock, mess->buffer, strlen(mess->buffer), 0, (struct sockaddr *)&broadcast_addr, sizeof(broadcast_addr)) < 0)
+                    {
+                        perror("sendto failed");
+                        exit(EXIT_FAILURE);
+                    }
+                    else
+                    {
+                        printf("Message sent to all clients on the network %s\n", broadcastAddress);
+                    }
                 }
             }
         }
@@ -282,7 +318,6 @@ int main()
     pthread_t thread_id;
     int ret;
 
-    message_data = (Message_data_t *)malloc(sizeof(Message_data_t));
     FILE *fp = fopen("config.json", "r");
 
     if (fp != NULL)
@@ -302,6 +337,9 @@ int main()
     cJSON *id_c = cJSON_GetObjectItem(config, "id");
     // strcpy(message_data->id_uav, id_c->valuestring);
     uint16_t listen_port = cJSON_GetObjectItem(config, "rec_port")->valueint;
+
+    initList(&head);
+    // assert this init
 
     ret = pthread_create(&thread_id, NULL, recv_thread, (void *)&listen_port);
     if (ret)
