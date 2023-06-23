@@ -77,7 +77,7 @@ node_s *searchNode(node_s *head, char *id)
    
     while (current != NULL)
     {
-        PRINT_DEBUG("Current id [%s] \n", current->id);
+        // PRINT_DEBUG("Current id [%s] \n", current->id);
         if (memcmp(current->id, id, 2) == 0)
         {
             printf("Found node with id [%s] \n", current->id);

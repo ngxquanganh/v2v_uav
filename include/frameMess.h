@@ -8,7 +8,7 @@ extern "C"
 #include <stdint.h>
 
 #define PAYLOAD_MAX_SIZE 100
-#define BUFFER_MAX_SIZE 600
+#define BUFFER_MAX_SIZE 150
 #define ID_SIZE 3
 
 

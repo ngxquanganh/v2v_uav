@@ -17,10 +17,13 @@
 #include "../include/util.h"
 
 #define BUF_SIZE 1024
-#define TIME_RECV 10
+#define TIME_RECV 5
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 node_s *head = NULL;
+
+static char my_uav_id[ID_SIZE];
+static unsigned int sequence_pkt_nb = 0;
 
 static void *recv_thread(void *arg)
 {
@@ -171,19 +174,38 @@ static void *recv_thread(void *arg)
 
             if (!node)
             {
-                PRINT_DEBUG("not found!\n");
-                /* insert */
-                insertNode(&head, mess->id, mess->payload, mess->seq_nb);
+                
+                if (memcmp(mess->id, my_uav_id, 2))
+                {
+                    insertNode(&head, mess->id, mess->payload, mess->seq_nb);
+                    PRINT_DEBUG("> insert node\n");
+                }
             }
             else
             {
-                updateNode(head, mess->id, mess->seq_nb, mess->payload);
+                if (memcmp(mess->id, my_uav_id, 2))
+                {
+                    if (mess->seq_nb > node->seq_nb)
+                    {
+                        updateNode(head, mess->id, mess->seq_nb, mess->payload);
+                        PRINT_DEBUG("> updateNode\n");
+                    }
+                    else
+                    {
+                        PRINT_DEBUG("> old packet\n");
+                    }
+                }
+                else
+                {
+                    PRINT_DEBUG("> packet of me\n");
+                }
             }
 
             printList(head);
         }
 
     END_LOOP:
+        printList(head);
         pthread_mutex_unlock(&mutex);
         printf("Receive end\n----------------\n\n");
         usleep(10);
@@ -280,19 +302,43 @@ static void *send_thread(void *arg)
                 // Send the message to all clients on the local network
                 while (node = travelList(head), node)
                 {
+                    memset(mess->buffer, 0, sizeof(mess->buffer));
+                    memset(mess->payload, 0, sizeof(mess->payload));
                     mess->seq_nb = node->seq_nb;
+                    mess->type = MSG_TYPE_DATA;
                     memcpy(mess->id, node->id, ID_SIZE);
                     memcpy(mess->payload, node->buffer, PAYLOAD_MAX_SIZE);
                     serializeMessage(mess);
-                    if (sendto(sock, mess->buffer, strlen(mess->buffer), 0, (struct sockaddr *)&broadcast_addr, sizeof(broadcast_addr)) < 0)
+
+                    if (sendto(sock, mess->buffer, sizeof(mess->buffer), 0, (struct sockaddr *)&broadcast_addr, sizeof(broadcast_addr)) < 0)
                     {
                         perror("sendto failed");
-                        exit(EXIT_FAILURE);
+                        // exit(EXIT_FAILURE);
                     }
                     else
                     {
-                        printf("Message sent to all clients on the network %s\n", broadcastAddress);
+                        printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                     }
+                }
+
+                /* send my info */
+                memset(mess->buffer, 0, sizeof(mess->buffer));
+                memset(mess->payload, 0, sizeof(mess->payload));
+                mess->seq_nb = sequence_pkt_nb;
+                mess->type = MSG_TYPE_DATA;
+                memcpy(mess->id, my_uav_id, ID_SIZE);
+                memcpy(mess->payload, "this is dump payload", 20);
+                serializeMessage(mess);
+
+                if (sendto(sock, mess->buffer, sizeof(mess->buffer), 0, (struct sockaddr *)&broadcast_addr, sizeof(broadcast_addr)) < 0)
+                {
+                    perror("sendto failed");
+                    // exit(EXIT_FAILURE);
+                }
+                else
+                {
+                    sequence_pkt_nb++;
+                    printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                 }
             }
         }
@@ -335,7 +381,7 @@ int main()
 
     // Get id and listen port
     cJSON *id_c = cJSON_GetObjectItem(config, "id");
-    // strcpy(message_data->id_uav, id_c->valuestring);
+    strcpy(my_uav_id, id_c->valuestring);
     uint16_t listen_port = cJSON_GetObjectItem(config, "rec_port")->valueint;
 
     initList(&head);
