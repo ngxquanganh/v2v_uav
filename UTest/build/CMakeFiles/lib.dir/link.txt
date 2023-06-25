@@ -1,2 +1,0 @@
-/usr/bin/ar qc liblib.a CMakeFiles/lib.dir/home/pi/thesis/code/src/linkedList.c.o CMakeFiles/lib.dir/home/pi/thesis/code/src/frameMess.c.o
-/usr/bin/ranlib liblib.a

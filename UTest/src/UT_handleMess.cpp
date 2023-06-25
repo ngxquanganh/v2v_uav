@@ -19,9 +19,9 @@ protected:
         // init a list
         buffer = (char *)calloc(1, PAYLOAD_MAX_SIZE);
         strcpy(buffer, "arrays support various string manipulation operations");
-        insertNode2(&head, "01", buffer, 0);
-        insertNode2(&head, "02", buffer, 1);
-        insertNode2(&head, "03", buffer, 2);
+        insertNode(&head, "01", buffer, 0, (char *)"0");
+        insertNode(&head, "02", buffer, 1, (char *)"0");
+        insertNode(&head, "03", buffer, 2, (char *)"0");
     }
 
     void TearDown() override
@@ -56,7 +56,7 @@ TEST_F(UT_handleMess, parse)
     }
     else
     {
-        updateNode(head, mess->id, mess->seq_nb, mess->payload);
+        updateNode(head, mess->id, mess->seq_nb, mess->payload, "0");
     }
 
     printList(head);
@@ -79,7 +79,7 @@ TEST_F(UT_handleMess, travel_serialize)
 
     cnt = 0;
 
-    insertNode2(&head, "06", buffer, 16);
+    insertNode(&head, "06", buffer, 16 ,"0");
     while (node = travelList(head), node)
     {
         mess->seq_nb = node->seq_nb;

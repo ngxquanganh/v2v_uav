@@ -28,7 +28,8 @@ packed_string = packed_data.decode("latin-1")
 
 message = ""
 message += struct.pack("I",0).decode("latin-1")
-message += "05\0"
+message += "05\0" #uav id
+message += "0" #gcs_indicator_flag
 message += struct.pack("I",6).decode("latin-1")
 message += "helllo"
 

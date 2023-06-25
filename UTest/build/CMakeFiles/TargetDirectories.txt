@@ -1,4 +1,0 @@
-/home/pi/thesis/code/UTest/build/CMakeFiles/edit_cache.dir
-/home/pi/thesis/code/UTest/build/CMakeFiles/main.dir
-/home/pi/thesis/code/UTest/build/CMakeFiles/rebuild_cache.dir
-/home/pi/thesis/code/UTest/build/CMakeFiles/lib.dir

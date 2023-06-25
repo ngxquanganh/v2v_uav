@@ -22,6 +22,8 @@ Message_status_t serializeMessage(Message_data_t *message)
    bufItr += sizeof(message->type);
    memcpy(message->buffer + bufItr, &message->id, sizeof(message->id));
    bufItr += sizeof(message->id);
+   memcpy(message->buffer + bufItr, &message->gcs_indicator, sizeof(message->gcs_indicator));
+   bufItr += sizeof(message->gcs_indicator);
    memcpy(message->buffer + bufItr, &message->seq_nb, sizeof(message->seq_nb));
    bufItr += sizeof(message->seq_nb);
    memcpy(message->buffer + bufItr, &message->payload, sizeof(message->payload));
@@ -37,11 +39,12 @@ Message_status_t deserializeMessage(Message_data_t *message)
    bufItr += sizeof(message->type);
    memcpy(&message->id, message->buffer + bufItr, sizeof(message->id));
    bufItr += sizeof(message->id);
+   memcpy(&message->gcs_indicator, message->buffer + bufItr, sizeof(message->gcs_indicator));
+   bufItr += sizeof(message->gcs_indicator);
    memcpy(&message->seq_nb, message->buffer + bufItr, sizeof(message->seq_nb));
    bufItr += sizeof(message->seq_nb);
    memcpy(&message->payload, message->buffer + bufItr, sizeof(message->payload));
    bufItr += sizeof(message->payload);
 
-   
    return MSG_OK;
 }

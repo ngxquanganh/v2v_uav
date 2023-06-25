@@ -39,6 +39,8 @@ extern "C"
 
         unsigned int seq_nb;
 
+        char gcs_indicator[1];
+
     } Message_data_t;
 
     Message_status_t serializeMessage(Message_data_t *message);

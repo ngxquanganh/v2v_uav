@@ -11,6 +11,10 @@
 #include <netdb.h>
 #include <ifaddrs.h>
 
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
 #include "../include/frameMess.h"
 #include "../include/cJSON.h"
 #include "../include/linkedList.h"
@@ -43,11 +47,14 @@ static void *recv_thread(void *arg)
     nb_interface = 0;
 
     Message_data_t *mess;
-
     node_s *node;
+    int shmid;
+    char *share_mem;
 
     mess = (Message_data_t *)calloc(1, sizeof(Message_data_t));
 
+    shmid = shmget(2345, 4, 0666 | IPC_CREAT);
+    share_mem = shmat(shmid, NULL, 0);
     // TODO: Assert alloc and init
 
     if (getifaddrs(&ifaddr) == -1)
@@ -77,7 +84,6 @@ static void *recv_thread(void *arg)
         }
     }
 
-    printf("nb interface %d'\n", nb_interface);
     freeifaddrs(ifaddr);
     // Create a UDP socket and bind it to the local address
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -114,6 +120,7 @@ static void *recv_thread(void *arg)
         timestamp = time(NULL);
 
         pthread_mutex_lock(&mutex);
+        printf("\n======== Receive start ========\n");
         // Receive the message from the server
         // Wait for enough receive time
         while ((time(NULL) - timestamp) < TIME_RECV)
@@ -174,10 +181,10 @@ static void *recv_thread(void *arg)
 
             if (!node)
             {
-                
+
                 if (memcmp(mess->id, my_uav_id, 2))
                 {
-                    insertNode(&head, mess->id, mess->payload, mess->seq_nb);
+                    insertNode(&head, mess->id, mess->payload, mess->seq_nb, mess->gcs_indicator);
                     PRINT_DEBUG("> insert node\n");
                 }
             }
@@ -187,8 +194,14 @@ static void *recv_thread(void *arg)
                 {
                     if (mess->seq_nb > node->seq_nb)
                     {
-                        updateNode(head, mess->id, mess->seq_nb, mess->payload);
+                        updateNode(head, mess->id, mess->seq_nb, mess->payload, mess->gcs_indicator);
+
                         PRINT_DEBUG("> updateNode\n");
+
+                        if (!memcmp(mess->gcs_indicator, "1", 1))
+                        {
+                            memset(share_mem, '1', 1);
+                        }
                     }
                     else
                     {
@@ -206,8 +219,9 @@ static void *recv_thread(void *arg)
 
     END_LOOP:
         printList(head);
+        //   printf("\n======== Receive end ========\n\n");
         pthread_mutex_unlock(&mutex);
-        printf("Receive end\n----------------\n\n");
+
         usleep(10);
     }
     // Close the socket
@@ -226,9 +240,27 @@ static void *send_thread(void *arg)
     int family, s;
     char host[NI_MAXHOST];
 
+    int shmid;
+    char *share_mem, *share_memory;
+
     node_s *node;
 
     Message_data_t *mess = (Message_data_t *)calloc(1, sizeof(Message_data_t));
+
+    shmid = shmget(1234, 4, 0666 | IPC_CREAT);
+    if (shmid == -1)
+    {
+        perror("shmget");
+        exit(1);
+    }
+
+    share_mem = shmat(shmid, NULL, 0);
+    if (share_mem == (char *)-1)
+    {
+        perror("shmat");
+        exit(1);
+    }
+    share_memory = share_mem;
 
     // Create a UDP socket
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
@@ -251,8 +283,11 @@ static void *send_thread(void *arg)
     broadcast_addr.sin_port = htons(*(uint16_t *)arg);
 
     for (;;)
+
     {
+
         pthread_mutex_lock(&mutex);
+        printf("\n======== Send start ========\n");
         if (getifaddrs(&ifaddr) == -1)
         {
             perror("getifaddrs");
@@ -306,6 +341,7 @@ static void *send_thread(void *arg)
                     memset(mess->payload, 0, sizeof(mess->payload));
                     mess->seq_nb = node->seq_nb;
                     mess->type = MSG_TYPE_DATA;
+                    memcpy(mess->gcs_indicator, node->gcs_indicator, 1);
                     memcpy(mess->id, node->id, ID_SIZE);
                     memcpy(mess->payload, node->buffer, PAYLOAD_MAX_SIZE);
                     serializeMessage(mess);
@@ -324,8 +360,10 @@ static void *send_thread(void *arg)
                 /* send my info */
                 memset(mess->buffer, 0, sizeof(mess->buffer));
                 memset(mess->payload, 0, sizeof(mess->payload));
+
                 mess->seq_nb = sequence_pkt_nb;
                 mess->type = MSG_TYPE_DATA;
+                memcpy(mess->gcs_indicator, share_memory, 1);
                 memcpy(mess->id, my_uav_id, ID_SIZE);
                 memcpy(mess->payload, "this is dump payload", 20);
                 serializeMessage(mess);
@@ -345,12 +383,12 @@ static void *send_thread(void *arg)
 
         freeifaddrs(ifaddr);
 
-        printf("Send end\n----------------\n\n");
+        // printf("\n========  Send end  ========\n");
 
         pthread_mutex_unlock(&mutex);
 
         // For receive thread acquire mutex
-        usleep(100);
+        usleep(50);
     }
     // Close the socket
     close(sock);
@@ -392,7 +430,7 @@ int main()
     {
         perror("Pthread create fail: ");
     }
-    usleep(100);
+    usleep(1000);
     ret = pthread_create(&thread_id, NULL, send_thread, (void *)&listen_port);
     if (ret)
     {

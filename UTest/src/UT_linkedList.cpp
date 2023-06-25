@@ -19,10 +19,10 @@ protected:
 
         buffer = (char *)calloc(1, PAYLOAD_MAX_SIZE);
         strcpy(buffer, "arrays support various string manipulation operations");
-        ret = insertNode2(&head, "01", buffer, 0);
-       
-        insertNode2(&head, "02", buffer, 1);
-        insertNode2(&head, "03", buffer, 2);
+        ret = insertNode(&head, "01", buffer, 0,(char*) "0");
+
+        insertNode(&head, "02", buffer, 1,(char*) "0");
+        insertNode(&head, "03", buffer, 2,(char*) "0");
     }
 
     void TearDown() override
@@ -42,7 +42,7 @@ TEST_F(UT_linkedList, updateNode)
 {
 
     printList(head);
-    updateNode(head, "02", 14, buffer);
+    updateNode(head, "02", 14, buffer,(char*)"0");
 
     printList(head);
     // PRINT_DEBUG("num node%d\n", num_uav);

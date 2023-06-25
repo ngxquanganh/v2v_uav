@@ -6,7 +6,7 @@
 #include <string.h>
 node_s *nodeIter;
 
-node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq_nb)
+node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq_nb, char *gcs_flag)
 {
 
     node_s *newNode = (node_s *)calloc(1, sizeof(node_s));
@@ -18,6 +18,7 @@ node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq
     memcpy(newNode->id, id, ID_SIZE);
     newNode->seq_nb = seq_nb;
     memcpy(newNode->buffer, buffer, PAYLOAD_MAX_SIZE);
+    memcpy(newNode->gcs_indicator, gcs_flag, 1);
     newNode->next = (*head)->next;
     (*head)->next = newNode;
 
@@ -74,7 +75,6 @@ node_s *searchNode(node_s *head, char *id)
     // node_s *return_node = (node_s *)malloc(sizeof(node_s));
     current = head->next;
 
-   
     while (current != NULL)
     {
         // PRINT_DEBUG("Current id [%s] \n", current->id);
@@ -90,7 +90,7 @@ node_s *searchNode(node_s *head, char *id)
     return NULL;
 }
 
-node_status_e updateNode(node_s *head, char *id, unsigned int seq_nb, char *buffer)
+node_status_e updateNode(node_s *head, char *id, unsigned int seq_nb, char *buffer, char *gcs_flag)
 {
     node_s *current = head->next;
 
@@ -99,6 +99,7 @@ node_status_e updateNode(node_s *head, char *id, unsigned int seq_nb, char *buff
         if (!memcmp(current->id, id, 2))
         {
             current->seq_nb = seq_nb;
+            memcpy(current->gcs_indicator, gcs_flag, 1);
             memcpy(current->buffer, buffer, PAYLOAD_MAX_SIZE);
             return NODE_OK;
         }

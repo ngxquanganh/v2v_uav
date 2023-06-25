@@ -49,7 +49,6 @@ protected:
         free(mess);
     }
 };
-
 TEST_F(UT_frameMess, testSerialize)
 {
     memcpy(mess->id, "01", 2);
