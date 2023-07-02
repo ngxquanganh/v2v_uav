@@ -7,6 +7,7 @@ find_package(GTest REQUIRED)
 set(SOURCES src/UT_frameMess.cpp
             src/UT_linkedList.cpp  
             src/UT_handleMess.cpp
+            src/UT_write.cpp
             )
 set(SOURCES_LIB  
     ../src/linkedList.c

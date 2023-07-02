@@ -10,10 +10,11 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <ifaddrs.h>
-
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <fcntl.h>
+#include <sys/file.h>
 
 #include "../include/frameMess.h"
 #include "../include/cJSON.h"
@@ -29,6 +30,47 @@ node_s *head = NULL;
 static char my_uav_id[ID_SIZE];
 static unsigned int sequence_pkt_nb = 0;
 
+#define FILE_OUT "/tmp/output.txt"
+#define FILE_IN "/tmp/in.txt"
+
+void write_file()
+{
+    int fd_write;
+    struct flock lock;
+    node_s *node;
+
+    fd_write = open(FILE_OUT, O_WRONLY | O_CREAT, 0666);
+    lock.l_type = F_WRLCK; // Shared lock for reading
+    lock.l_whence = SEEK_SET;
+    lock.l_start = 0;
+    lock.l_len = 0;
+    if (fd_write == -1)
+    {
+        perror("Failed to open the file");
+    }
+    if (fcntl(fd_write, F_SETLKW, &lock) == -1)
+    {
+        perror("Failed to acquire file lock");
+        close(fd_write);
+    }
+
+    while (node = travelList(head), node)
+    {
+        write(fd_write, node->id, sizeof(node->id) - 1); // NULL end
+        write(fd_write, "#", 1);
+        write(fd_write, node->buffer, sizeof(node->buffer));
+        write(fd_write, "\n", 1);
+    }
+    // Release the lock
+    lock.l_type = F_UNLCK;
+    if (fcntl(fd_write, F_SETLK, &lock) == -1)
+    {
+        perror("Failed to release file lock");
+        close(fd_write);
+    }
+    close(fd_write);
+}
+
 static void *recv_thread(void *arg)
 {
 
@@ -42,9 +84,7 @@ static void *recv_thread(void *arg)
     int family, s;
     char host[NI_MAXHOST];
     char ip[5][16];
-    uint8_t nb_interface;
-
-    nb_interface = 0;
+    uint8_t nb_interface = 0;
 
     Message_data_t *mess;
     node_s *node;
@@ -185,7 +225,7 @@ static void *recv_thread(void *arg)
                 if (memcmp(mess->id, my_uav_id, 2))
                 {
                     insertNode(&head, mess->id, mess->payload, mess->seq_nb, mess->gcs_indicator);
-                    PRINT_DEBUG("> insert node\n");
+                    PRINT_DEBUG("> insert UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                 }
             }
             else
@@ -195,8 +235,7 @@ static void *recv_thread(void *arg)
                     if (mess->seq_nb > node->seq_nb)
                     {
                         updateNode(head, mess->id, mess->seq_nb, mess->payload, mess->gcs_indicator);
-
-                        PRINT_DEBUG("> updateNode\n");
+                        PRINT_DEBUG("> update UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
 
                         if (!memcmp(mess->gcs_indicator, "1", 1))
                         {
@@ -214,7 +253,8 @@ static void *recv_thread(void *arg)
                 }
             }
 
-            printList(head);
+            // printList(head);
+            write_file();
         }
 
     END_LOOP:
@@ -242,6 +282,9 @@ static void *send_thread(void *arg)
 
     int shmid;
     char *share_mem, *share_memory;
+
+    int fd_read;
+    struct flock lock;
 
     node_s *node;
 
@@ -361,11 +404,36 @@ static void *send_thread(void *arg)
                 memset(mess->buffer, 0, sizeof(mess->buffer));
                 memset(mess->payload, 0, sizeof(mess->payload));
 
+                fd_read = open(FILE_IN, O_RDONLY);
+                if (fd_read == -1)
+                {
+                    perror("Failed to open read the file");
+                }
+
+                lock.l_type = F_RDLCK; // Shared lock for reading
+                lock.l_whence = SEEK_SET;
+                lock.l_start = 0;
+                lock.l_len = 0;
+                if (fcntl(fd_read, F_SETLKW, &lock) == -1)
+                {
+                    perror("Failed to acquire file lock");
+                    close(fd_read);
+                }
+
+                // fgets(mess->payload, sizeof(mess->payload), fd_read);
+                read(fd_read, mess->payload, sizeof(mess->payload));
+                if (fcntl(fd_read, F_SETLK, &lock) == -1)
+                {
+                    perror("Failed to release file lock");
+                    close(fd_read);
+                }
+                close(fd_read);
+
                 mess->seq_nb = sequence_pkt_nb;
                 mess->type = MSG_TYPE_DATA;
                 memcpy(mess->gcs_indicator, share_memory, 1);
                 memcpy(mess->id, my_uav_id, ID_SIZE);
-                memcpy(mess->payload, "this is dump payload", 20);
+                // memcpy(mess->payload, "this is dump payload", 20);
                 serializeMessage(mess);
 
                 if (sendto(sock, mess->buffer, sizeof(mess->buffer), 0, (struct sockaddr *)&broadcast_addr, sizeof(broadcast_addr)) < 0)
