@@ -240,6 +240,12 @@ static void *recv_thread(void *arg)
                         if (!memcmp(mess->gcs_indicator, "1", 1))
                         {
                             memset(share_mem, '1', 1);
+                            // PRINT_DEBUG(">> FLAG 2345 %1s\n", share_mem);
+                        }
+                        else
+                        {
+                            memset(share_mem, '0', 1);
+                            // PRINT_DEBUG(">> FLAG 2345 %1s\n", share_mem);
                         }
                     }
                     else
@@ -431,6 +437,7 @@ static void *send_thread(void *arg)
 
                 mess->seq_nb = sequence_pkt_nb;
                 mess->type = MSG_TYPE_DATA;
+                // PRINT_DEBUG(">> FLAG 1234 %1s\n", share_memory);
                 memcpy(mess->gcs_indicator, share_memory, 1);
                 memcpy(mess->id, my_uav_id, ID_SIZE);
                 // memcpy(mess->payload, "this is dump payload", 20);
@@ -443,12 +450,12 @@ static void *send_thread(void *arg)
                 }
                 else
                 {
-                    sequence_pkt_nb++;
+                    
                     printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                 }
             }
         }
-
+        sequence_pkt_nb++;
         freeifaddrs(ifaddr);
 
         // printf("\n========  Send end  ========\n");
