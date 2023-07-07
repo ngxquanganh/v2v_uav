@@ -15,6 +15,7 @@
 #include <sys/shm.h>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <time.h>
 
 #include "../include/frameMess.h"
 #include "../include/cJSON.h"
@@ -23,15 +24,39 @@
 
 #define BUF_SIZE 1024
 #define TIME_RECV 5
+#define FILE_OUT "/tmp/output.txt"
+#define FILE_IN "/tmp/in.txt"
+#define FILE_LOG "/var/log/message_exchange.log"
+#define LOG(...)                           \
+    getTime(timeString);                   \
+    fprintf(file_log, "%s: ", timeString); \
+    fprintf(file_log, __VA_ARGS__);        \
+    fflush(file_log);
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 node_s *head = NULL;
+char *timeString;
 
 static char my_uav_id[ID_SIZE];
 static unsigned int sequence_pkt_nb = 0;
 
-#define FILE_OUT "/tmp/output.txt"
-#define FILE_IN "/tmp/in.txt"
+FILE *file_log = NULL;
+
+void getTime(char *timeString)
+{
+    struct timespec currentTime;
+    clock_gettime(CLOCK_REALTIME, &currentTime);
+
+    struct tm *localTime;
+    localTime = localtime(&currentTime.tv_sec);
+
+    strftime(timeString, 12, "%T", localTime);
+
+    char milliseconds[4];
+    snprintf(milliseconds, 4, ".%03ld", currentTime.tv_nsec / 1000000);
+
+    strcat(timeString, milliseconds);
+}
 
 void write_file()
 {
@@ -151,8 +176,8 @@ static void *recv_thread(void *arg)
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-
-    printf("Listening for broadcast messages on port %d...\n", *(uint16_t *)arg);
+    LOG("Listening for broadcast messages on port %d\n", *(uint16_t *)arg);
+    printf("Listening for broadcast messages on port %d\n", *(uint16_t *)arg);
 
     for (;;)
     {
@@ -161,6 +186,7 @@ static void *recv_thread(void *arg)
 
         pthread_mutex_lock(&mutex);
         printf("\n======== Receive start ========\n");
+        LOG("===== RECEIVE ======\n");
         // Receive the message from the server
         // Wait for enough receive time
         while ((time(NULL) - timestamp) < TIME_RECV)
@@ -215,7 +241,7 @@ static void *recv_thread(void *arg)
                 printf("error mess\n");
                 // TODO: log error
             }
-
+            LOG("Message: Receive: UAV_ID[%s] addr[%03u.%03u.%03u.%03u] seq_nb [%d]\n", mess->id, d1, d2, d3, d4, mess->seq_nb);
             printf(">> Message: uav id [%s] addr [%03u.%03u.%03u.%03u] seq_nb [%d] [%s]\n", mess->id, d1, d2, d3, d4, mess->seq_nb, mess->payload);
             node = searchNode(head, mess->id);
 
@@ -226,6 +252,7 @@ static void *recv_thread(void *arg)
                 {
                     insertNode(&head, mess->id, mess->payload, mess->seq_nb, mess->gcs_indicator);
                     PRINT_DEBUG("> insert UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
+                    LOG("List: Insert: UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                 }
             }
             else
@@ -236,7 +263,7 @@ static void *recv_thread(void *arg)
                     {
                         updateNode(head, mess->id, mess->seq_nb, mess->payload, mess->gcs_indicator);
                         PRINT_DEBUG("> update UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
-
+                        LOG("List: Update: UAV[%s] seq_nb[%d]", mess->id, mess->seq_nb);
                         if (!memcmp(mess->gcs_indicator, "1", 1))
                         {
                             memset(share_mem, '1', 1);
@@ -337,6 +364,7 @@ static void *send_thread(void *arg)
 
         pthread_mutex_lock(&mutex);
         printf("\n======== Send start ========\n");
+        LOG("===== SEND ======\n");
         if (getifaddrs(&ifaddr) == -1)
         {
             perror("getifaddrs");
@@ -402,6 +430,7 @@ static void *send_thread(void *arg)
                     }
                     else
                     {
+                        LOG("Message: Send: UAV_ID[%s] seq_nb[%d] to %s\n", mess->id, mess->seq_nb, broadcastAddress);
                         printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                     }
                 }
@@ -450,7 +479,7 @@ static void *send_thread(void *arg)
                 }
                 else
                 {
-                    
+                    LOG("Message: Send: UAV_ID[%s] seq_nb[%d] to %s\n", mess->id, mess->seq_nb, broadcastAddress);
                     printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                 }
             }
@@ -476,7 +505,13 @@ int main()
     char source[1000];
     pthread_t thread_id;
     int ret;
-
+    timeString = malloc(12);
+    file_log = fopen(FILE_LOG, "w");
+    if (!file_log)
+    {
+        printf("Open file log fail!");
+        exit(1);
+    }
     FILE *fp = fopen("config.json", "r");
 
     if (fp != NULL)
@@ -495,9 +530,19 @@ int main()
     // Get id and listen port
     cJSON *id_c = cJSON_GetObjectItem(config, "id");
     strcpy(my_uav_id, id_c->valuestring);
-    uint16_t listen_port = cJSON_GetObjectItem(config, "rec_port")->valueint;
 
+    uint16_t listen_port = cJSON_GetObjectItem(config, "rec_port")->valueint;
+    LOG("UAV ID [%s]\n", my_uav_id);
     initList(&head);
+    if (head)
+    {
+        LOG("UAV List init success\n");
+    }
+    else
+    {
+        LOG("UAV List init fail\n");
+        exit(1);
+    }
     // assert this init
 
     ret = pthread_create(&thread_id, NULL, recv_thread, (void *)&listen_port);
