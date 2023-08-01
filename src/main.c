@@ -186,7 +186,9 @@ static void *recv_thread(void *arg)
 
         pthread_mutex_lock(&mutex);
         printf("\n======== Receive start ========\n");
+        LOG("\n")
         LOG("===== RECEIVE ======\n");
+        
         // Receive the message from the server
         // Wait for enough receive time
         while ((time(NULL) - timestamp) < TIME_RECV)
@@ -241,7 +243,7 @@ static void *recv_thread(void *arg)
                 printf("error mess\n");
                 // TODO: log error
             }
-            LOG("Message: Receive: UAV_ID[%s] addr[%03u.%03u.%03u.%03u] seq_nb [%d]\n", mess->id, d1, d2, d3, d4, mess->seq_nb);
+            LOG("Message: Receive: UAV_ID[%s] seq_nb[%d] addr[%03u.%03u.%03u.%03u]\n", mess->id, mess->seq_nb,d1, d2, d3, d4);
             printf(">> Message: uav id [%s] addr [%03u.%03u.%03u.%03u] seq_nb [%d] [%s]\n", mess->id, d1, d2, d3, d4, mess->seq_nb, mess->payload);
             node = searchNode(head, mess->id);
 
@@ -252,7 +254,7 @@ static void *recv_thread(void *arg)
                 {
                     insertNode(&head, mess->id, mess->payload, mess->seq_nb, mess->gcs_indicator, mess->timestamp);
                     PRINT_DEBUG("> insert UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
-                    LOG("List: Insert: UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
+                    LOG("List:    Insert:  UAV_ID[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                 }
             }
             else
@@ -263,7 +265,7 @@ static void *recv_thread(void *arg)
                     {
                         updateNode(head, mess->id, mess->seq_nb, mess->payload, mess->gcs_indicator, mess->timestamp);
                         PRINT_DEBUG("> update UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
-                        LOG("List: Update: UAV[%s] seq_nb[%d]", mess->id, mess->seq_nb);
+                        LOG("List:    Update:  UAV_ID[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                         if (!memcmp(mess->gcs_indicator, "1", 1))
                         {
                             memset(share_mem, '1', 1);
@@ -364,7 +366,8 @@ static void *send_thread(void *arg)
 
         pthread_mutex_lock(&mutex);
         printf("\n======== Send start ========\n");
-        LOG("===== SEND ======\n");
+        LOG("\n")
+        LOG("====== SEND =======\n");
         if (getifaddrs(&ifaddr) == -1)
         {
             perror("getifaddrs");
@@ -431,7 +434,7 @@ static void *send_thread(void *arg)
                     }
                     else
                     {
-                        LOG("Message: Send: UAV_ID[%s] seq_nb[%d] to %s\n", mess->id, mess->seq_nb, broadcastAddress);
+                        LOG("Message: Send:    UAV_ID[%s] seq_nb[%d] to %s\n", mess->id, mess->seq_nb, broadcastAddress);
                         printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                     }
                 }
@@ -481,7 +484,7 @@ static void *send_thread(void *arg)
                 }
                 else
                 {
-                    LOG("Message: Send: UAV_ID[%s] seq_nb[%d] to %s\n", mess->id, mess->seq_nb, broadcastAddress);
+                    LOG("Message: Send:    UAV_ID[%s] seq_nb[%d] to\t%s\n", mess->id, mess->seq_nb, broadcastAddress);
                     printf("Message [%s][%d] sent to all clients on the network %s\n", mess->id, mess->seq_nb, broadcastAddress);
                 }
             }

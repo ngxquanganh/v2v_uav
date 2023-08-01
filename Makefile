@@ -37,8 +37,8 @@ $(OBJ_DIR)/frameMess.o: $(SRC_DIR)/frameMess.c $(INC_DIR)/frameMess.h| $(OBJ_DIR
 $(OBJ_DIR)/cJSON.o: $(SRC_DIR)/cJSON.c $(INC_DIR)/cJSON.h| $(OBJ_DIR)
 	$(CC) $(CFLAGS) -I$(INC_DIR) -c $(SRC_DIR)/cJSON.c -o $(OBJ_DIR)/cJSON.o
 
-# $(OBJ_DIR):
-# 	mkdir -p $(OBJ_DIR)
+$(OBJ_DIR):
+	mkdir -p $(OBJ_DIR)
 
 # test: $(TEST)
 
