@@ -22,6 +22,8 @@ extern "C"
 
         struct node *next;
 
+        time_t timestamp;
+
         char gcs_indicator[1];
 
     } node_s;
@@ -34,7 +36,7 @@ extern "C"
      * @param buffer The buffer of the node
      * @return node_status_e The status of the insertion
      */
-    node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq_nb, char *gcs_flag);
+    node_status_e insertNode(node_s **head, char *id, char *buffer, unsigned int seq_nb, char *gcs_flag, time_t timestamp);
 
     /**
      * @brief Print the list
@@ -75,7 +77,7 @@ extern "C"
      * @param buffer The buffer of the node
      * @return void
      */
-    node_status_e updateNode(node_s *head, char id[], unsigned int seq_nb, char buffer[], char *gcs_flag);
+    node_status_e updateNode(node_s *head, char id[], unsigned int seq_nb, char buffer[], char *gcs_flag, time_t timestamp);
 
     void printNode(node_s *head, node_s *_node);
 

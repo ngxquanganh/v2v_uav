@@ -250,7 +250,7 @@ static void *recv_thread(void *arg)
 
                 if (memcmp(mess->id, my_uav_id, 2))
                 {
-                    insertNode(&head, mess->id, mess->payload, mess->seq_nb, mess->gcs_indicator);
+                    insertNode(&head, mess->id, mess->payload, mess->seq_nb, mess->gcs_indicator, mess->timestamp);
                     PRINT_DEBUG("> insert UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                     LOG("List: Insert: UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                 }
@@ -261,7 +261,7 @@ static void *recv_thread(void *arg)
                 {
                     if (mess->seq_nb > node->seq_nb)
                     {
-                        updateNode(head, mess->id, mess->seq_nb, mess->payload, mess->gcs_indicator);
+                        updateNode(head, mess->id, mess->seq_nb, mess->payload, mess->gcs_indicator, mess->timestamp);
                         PRINT_DEBUG("> update UAV[%s] seq_nb[%d]\n", mess->id, mess->seq_nb);
                         LOG("List: Update: UAV[%s] seq_nb[%d]", mess->id, mess->seq_nb);
                         if (!memcmp(mess->gcs_indicator, "1", 1))
@@ -420,6 +420,7 @@ static void *send_thread(void *arg)
                     mess->type = MSG_TYPE_DATA;
                     memcpy(mess->gcs_indicator, node->gcs_indicator, 1);
                     memcpy(mess->id, node->id, ID_SIZE);
+                    mess->timestamp = node->timestamp;
                     memcpy(mess->payload, node->buffer, PAYLOAD_MAX_SIZE);
                     serializeMessage(mess);
 
@@ -469,6 +470,7 @@ static void *send_thread(void *arg)
                 // PRINT_DEBUG(">> FLAG 1234 %1s\n", share_memory);
                 memcpy(mess->gcs_indicator, share_memory, 1);
                 memcpy(mess->id, my_uav_id, ID_SIZE);
+                mess->timestamp = time(NULL);
                 // memcpy(mess->payload, "this is dump payload", 20);
                 serializeMessage(mess);
 

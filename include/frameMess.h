@@ -6,6 +6,7 @@ extern "C"
 #pragma once
 
 #include <stdint.h>
+#include <time.h>
 
 #define PAYLOAD_MAX_SIZE 100
 #define BUFFER_MAX_SIZE 150
@@ -39,7 +40,10 @@ extern "C"
 
         unsigned int seq_nb;
 
+        time_t timestamp;
+
         char gcs_indicator[1];
+
 
     } Message_data_t;
 
